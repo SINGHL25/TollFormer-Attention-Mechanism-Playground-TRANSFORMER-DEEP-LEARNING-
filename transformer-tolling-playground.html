@@ -1,0 +1,1714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TollFormer — Attention Mechanism Playground</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #08090d;
+    --surface: #0f1117;
+    --panel: #141720;
+    --border: #1e2233;
+    --accent: #00e5ff;
+    --accent2: #7c3aed;
+    --accent3: #f59e0b;
+    --accent4: #10b981;
+    --danger: #ef4444;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --glow: rgba(0,229,255,0.15);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* GRID BG */
+  body::before {
+    content:'';
+    position:fixed; inset:0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events:none; z-index:0;
+  }
+
+  /* HEADER */
+  header {
+    position:relative; z-index:10;
+    padding: 20px 40px;
+    border-bottom: 1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between;
+    background: rgba(8,9,13,0.9);
+    backdrop-filter: blur(12px);
+  }
+  .logo {
+    font-family:'Syne',sans-serif; font-size:22px; font-weight:800;
+    letter-spacing:-0.5px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  }
+  .logo span { color:var(--accent3); -webkit-text-fill-color:var(--accent3); }
+  .header-tags { display:flex; gap:8px; }
+  .tag {
+    font-family:'Space Mono',monospace; font-size:10px;
+    padding:4px 10px; border-radius:4px;
+    border:1px solid var(--border);
+    color:var(--muted); background:var(--surface);
+  }
+  .tag.live { border-color:var(--accent4); color:var(--accent4); }
+
+  /* NAV TABS */
+  .nav-tabs {
+    position:relative; z-index:10;
+    display:flex; gap:2px;
+    padding: 12px 40px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    overflow-x:auto;
+  }
+  .tab-btn {
+    font-family:'Space Mono',monospace; font-size:11px;
+    padding:8px 18px; border-radius:6px;
+    border:1px solid transparent;
+    background:transparent; color:var(--muted);
+    cursor:pointer; white-space:nowrap;
+    transition: all 0.2s;
+  }
+  .tab-btn.active {
+    background:var(--panel); border-color:var(--accent);
+    color:var(--accent);
+  }
+  .tab-btn:hover:not(.active) { color:var(--text); background:var(--panel); }
+
+  /* MAIN */
+  main {
+    position:relative; z-index:5;
+    padding:30px 40px;
+    max-width:1600px; margin:0 auto;
+  }
+
+  /* SECTIONS */
+  .section { display:none; }
+  .section.active { display:block; }
+
+  /* CARDS */
+  .card {
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:24px;
+  }
+  .card-title {
+    font-family:'Syne',sans-serif; font-size:14px; font-weight:700;
+    color:var(--accent); text-transform:uppercase; letter-spacing:2px;
+    margin-bottom:16px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .card-title .dot { width:8px; height:8px; border-radius:50%; background:var(--accent); box-shadow:0 0 8px var(--accent); }
+
+  /* GRID LAYOUTS */
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; }
+  .grid-auto { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; }
+
+  /* KPI TILES */
+  .kpi {
+    background:var(--panel); border:1px solid var(--border); border-radius:10px;
+    padding:20px; text-align:center;
+  }
+  .kpi-val {
+    font-family:'Space Mono',monospace; font-size:28px; font-weight:700;
+    color:var(--accent);
+  }
+  .kpi-label { font-size:11px; color:var(--muted); margin-top:4px; text-transform:uppercase; letter-spacing:1px; }
+  .kpi-delta { font-size:12px; color:var(--accent4); margin-top:6px; }
+
+  /* BUTTONS */
+  .btn {
+    font-family:'Space Mono',monospace; font-size:11px;
+    padding:10px 20px; border-radius:6px;
+    border:1px solid var(--accent); color:var(--accent);
+    background:transparent; cursor:pointer;
+    transition:all 0.2s;
+  }
+  .btn:hover { background:var(--accent); color:var(--bg); }
+  .btn.primary { background:var(--accent); color:var(--bg); }
+  .btn.primary:hover { opacity:0.85; }
+  .btn.danger { border-color:var(--danger); color:var(--danger); }
+  .btn.danger:hover { background:var(--danger); color:white; }
+
+  /* ===================== SECTION 1: OVERVIEW ===================== */
+  .arch-diagram {
+    display:flex; align-items:center; justify-content:center;
+    gap:0; flex-wrap:nowrap; overflow-x:auto;
+    padding:20px 0;
+  }
+  .arch-block {
+    background:var(--surface); border:1px solid var(--border); border-radius:10px;
+    padding:16px 12px; text-align:center; min-width:110px;
+    transition:all 0.3s; cursor:pointer; position:relative;
+  }
+  .arch-block:hover, .arch-block.highlight {
+    border-color:var(--accent); box-shadow:0 0 20px rgba(0,229,255,0.2);
+    transform:translateY(-4px);
+  }
+  .arch-block .icon { font-size:24px; margin-bottom:8px; }
+  .arch-block .label { font-family:'Space Mono',monospace; font-size:9px; color:var(--muted); }
+  .arch-block .name { font-size:11px; font-weight:600; margin-top:3px; }
+  .arch-arrow {
+    width:40px; height:2px; background:linear-gradient(90deg, var(--border), var(--accent));
+    position:relative; flex-shrink:0;
+  }
+  .arch-arrow::after {
+    content:'▶'; position:absolute; right:-8px; top:-8px;
+    color:var(--accent); font-size:10px;
+  }
+  .concept-row { display:flex; gap:16px; margin-top:20px; flex-wrap:wrap; }
+  .concept-card {
+    flex:1; min-width:200px;
+    background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px;
+  }
+  .concept-card h4 { font-family:'Syne',sans-serif; font-size:13px; color:var(--accent3); margin-bottom:8px; }
+  .concept-card p { font-size:12px; color:var(--muted); line-height:1.6; }
+
+  /* ===================== SECTION 2: EMBEDDINGS ===================== */
+  .vehicle-grid { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
+  .vehicle-chip {
+    display:flex; align-items:center; gap:8px;
+    background:var(--surface); border:2px solid var(--border); border-radius:8px;
+    padding:8px 14px; cursor:pointer; transition:all 0.2s;
+    font-size:12px;
+  }
+  .vehicle-chip.selected { border-color:var(--accent); background:rgba(0,229,255,0.08); }
+  .vehicle-chip:hover { border-color:var(--accent); }
+  .embedding-canvas-wrap { position:relative; }
+  canvas { border-radius:8px; }
+  .embed-legend { display:flex; gap:12px; flex-wrap:wrap; margin-top:10px; }
+  .embed-legend-item { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted); }
+  .legend-dot { width:10px; height:10px; border-radius:50%; }
+
+  /* ===================== SECTION 3: ATTENTION ===================== */
+  .token-row { display:flex; gap:6px; align-items:center; margin-bottom:20px; flex-wrap:wrap; }
+  .token {
+    font-family:'Space Mono',monospace; font-size:11px;
+    padding:8px 12px; border-radius:6px;
+    border:1px solid var(--border); background:var(--surface);
+    cursor:pointer; transition:all 0.2s; position:relative;
+  }
+  .token.noun { border-color:var(--accent); color:var(--accent); }
+  .token.adj { border-color:var(--accent3); color:var(--accent3); }
+  .token.verb { border-color:var(--accent4); color:var(--accent4); }
+  .token.other { border-color:var(--muted); color:var(--muted); }
+  .token.selected { box-shadow:0 0 15px rgba(0,229,255,0.4); transform:translateY(-3px); }
+  .token-label { font-size:8px; position:absolute; top:-16px; left:50%; transform:translateX(-50%); white-space:nowrap; }
+  .attn-grid-wrap { overflow-x:auto; }
+  #attnCanvas { display:block; }
+  .attn-controls { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
+  .slider-wrap { display:flex; align-items:center; gap:8px; }
+  .slider-wrap label { font-size:11px; color:var(--muted); white-space:nowrap; font-family:'Space Mono',monospace; }
+  input[type=range] {
+    -webkit-appearance:none; height:4px; border-radius:2px;
+    background:var(--border); outline:none; width:100px;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance:none; width:14px; height:14px; border-radius:50%;
+    background:var(--accent); cursor:pointer;
+  }
+  .softmax-bar-row { display:flex; gap:4px; align-items:flex-end; height:60px; margin-top:12px; }
+  .softmax-bar { flex:1; border-radius:4px 4px 0 0; transition:height 0.4s; min-width:30px; display:flex; align-items:flex-end; justify-content:center; }
+  .softmax-label { font-size:9px; font-family:'Space Mono',monospace; color:var(--bg); padding:2px; }
+
+  /* ===================== SECTION 4: QKV ===================== */
+  .matrix-display {
+    font-family:'Space Mono',monospace; font-size:10px;
+    display:grid; gap:3px; padding:16px;
+    background:var(--surface); border:1px solid var(--border); border-radius:8px;
+    overflow:auto;
+  }
+  .matrix-row { display:flex; gap:4px; }
+  .matrix-cell {
+    width:40px; height:24px; display:flex; align-items:center; justify-content:center;
+    border-radius:3px; font-size:9px; color:white; font-weight:600;
+    transition:all 0.3s;
+  }
+  .qkv-flow { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  .qkv-block { flex:1; min-width:150px; }
+  .qkv-block h5 { font-family:'Space Mono',monospace; font-size:11px; margin-bottom:8px; }
+  .flow-arrow-big {
+    font-size:24px; color:var(--accent);
+    animation: pulse-arrow 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse-arrow {
+    0%,100%{opacity:0.4;} 50%{opacity:1;}
+  }
+  .vector-vis { display:flex; gap:2px; }
+  .vector-cell {
+    width:18px; height:40px; border-radius:3px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:7px; color:white;
+    transition:all 0.3s;
+  }
+
+  /* ===================== SECTION 5: MASKING ===================== */
+  .mask-grid { display:inline-grid; gap:3px; }
+  .mask-cell {
+    width:44px; height:44px; border-radius:5px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    font-size:9px; font-family:'Space Mono',monospace;
+    transition:all 0.4s; cursor:pointer; border:1px solid transparent;
+  }
+  .mask-cell.allowed { background:rgba(16,185,129,0.15); border-color:rgba(16,185,129,0.3); color:var(--accent4); }
+  .mask-cell.masked { background:rgba(239,68,68,0.1); border-color:rgba(239,68,68,0.2); color:var(--danger); }
+  .mask-cell.active { border-color:var(--accent); box-shadow:0 0 10px rgba(0,229,255,0.3); }
+  .mask-header { font-family:'Space Mono',monospace; font-size:10px; color:var(--muted); text-align:center; margin:4px 0; }
+
+  /* ===================== SECTION 6: MULTI-HEAD ===================== */
+  .head-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; }
+  .head-card {
+    background:var(--surface); border:1px solid var(--border); border-radius:8px;
+    padding:12px; cursor:pointer; transition:all 0.2s; text-align:center;
+  }
+  .head-card:hover, .head-card.active { border-color:var(--accent); background:rgba(0,229,255,0.05); }
+  .head-card .head-num { font-family:'Space Mono',monospace; font-size:18px; font-weight:700; }
+  .head-card .head-type { font-size:10px; color:var(--muted); margin-top:4px; }
+  .head-card .head-score { font-size:12px; color:var(--accent4); margin-top:6px; }
+  .mini-attn { display:grid; gap:1px; margin-top:8px; }
+  .mini-row { display:flex; gap:1px; }
+  .mini-cell { width:12px; height:12px; border-radius:1px; }
+
+  /* ===================== SECTION 7: LIVE SIM ===================== */
+  .toll-lane {
+    display:flex; align-items:center; gap:0;
+    background:var(--surface); border:1px solid var(--border); border-radius:10px;
+    overflow:hidden; margin-bottom:12px; min-height:70px; position:relative;
+  }
+  .lane-label {
+    background:var(--panel); padding:12px 16px;
+    font-family:'Space Mono',monospace; font-size:10px; color:var(--muted);
+    border-right:1px solid var(--border); white-space:nowrap; min-width:120px;
+  }
+  .lane-vehicles { flex:1; display:flex; align-items:center; gap:8px; padding:10px; overflow-x:auto; }
+  .vehicle-token {
+    display:flex; flex-direction:column; align-items:center;
+    background:var(--panel); border:1px solid var(--border); border-radius:6px;
+    padding:6px 8px; font-size:10px; white-space:nowrap; transition:all 0.3s;
+    cursor:pointer; min-width:60px;
+  }
+  .vehicle-token.processing { border-color:var(--accent); box-shadow:0 0 10px rgba(0,229,255,0.3); animation:processing-pulse 0.8s ease-in-out infinite; }
+  .vehicle-token.processed { border-color:var(--accent4); background:rgba(16,185,129,0.08); }
+  .vehicle-token.anomaly { border-color:var(--danger); background:rgba(239,68,68,0.08); }
+  @keyframes processing-pulse { 0%,100%{opacity:0.7;} 50%{opacity:1;} }
+  .vehicle-icon { font-size:20px; }
+  .vehicle-plate { font-family:'Space Mono',monospace; font-size:8px; color:var(--muted); }
+  .vehicle-class { font-size:8px; color:var(--accent3); margin-top:2px; }
+  .lane-status {
+    background:var(--panel); border-left:1px solid var(--border);
+    padding:12px 16px; min-width:160px;
+    font-family:'Space Mono',monospace; font-size:10px;
+  }
+  .status-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; }
+  .status-dot.green { background:var(--accent4); box-shadow:0 0 6px var(--accent4); }
+  .status-dot.yellow { background:var(--accent3); box-shadow:0 0 6px var(--accent3); }
+  .status-dot.red { background:var(--danger); box-shadow:0 0 6px var(--danger); }
+
+  /* ATTENTION VIZ CANVAS */
+  #liveAttnCanvas { border-radius:8px; display:block; }
+
+  /* LOG */
+  .log-box {
+    background:var(--surface); border:1px solid var(--border); border-radius:8px;
+    padding:12px; height:160px; overflow-y:auto; font-family:'Space Mono',monospace;
+    font-size:10px; color:var(--muted);
+  }
+  .log-line { padding:2px 0; border-bottom:1px solid rgba(255,255,255,0.03); }
+  .log-line.info { color:var(--accent); }
+  .log-line.warn { color:var(--accent3); }
+  .log-line.ok { color:var(--accent4); }
+  .log-line.err { color:var(--danger); }
+
+  /* CHART AREA */
+  .chart-wrap { position:relative; }
+  #throughputCanvas { border-radius:8px; display:block; }
+
+  /* TRANSFORMER ANIMATION */
+  .transformer-anim {
+    position:relative; height:200px;
+    background:var(--surface); border:1px solid var(--border); border-radius:10px;
+    overflow:hidden; margin-bottom:20px;
+  }
+  .data-particle {
+    position:absolute; width:8px; height:8px; border-radius:50%;
+    background:var(--accent); box-shadow:0 0 8px var(--accent);
+    transition:left 0.6s ease, top 0.6s ease;
+  }
+  .layer-block {
+    position:absolute; top:50%; transform:translateY(-50%);
+    width:60px; border-radius:6px; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; padding:8px;
+    border:1px solid var(--border); background:var(--panel);
+    font-size:9px; font-family:'Space Mono',monospace; text-align:center;
+    cursor:default;
+  }
+  .layer-block.attn-layer { border-color:var(--accent); }
+  .layer-block.mlp-layer { border-color:var(--accent2); }
+  .layer-block .layer-icon { font-size:16px; margin-bottom:4px; }
+
+  /* PROGRESS BAR */
+  .progress-bar {
+    background:var(--border); border-radius:4px; height:6px; overflow:hidden;
+  }
+  .progress-fill {
+    height:100%; border-radius:4px;
+    background:linear-gradient(90deg, var(--accent), var(--accent2));
+    transition:width 0.4s;
+  }
+
+  /* TOOLTIP */
+  .tooltip {
+    position:fixed; background:var(--panel); border:1px solid var(--accent);
+    border-radius:6px; padding:8px 12px; font-size:11px;
+    pointer-events:none; z-index:1000; max-width:200px;
+    display:none; box-shadow:0 4px 20px rgba(0,0,0,0.5);
+  }
+
+  /* SCROLL BAR */
+  ::-webkit-scrollbar { width:6px; height:6px; }
+  ::-webkit-scrollbar-track { background:var(--surface); }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+  /* ANIMATION */
+  @keyframes fadeIn { from{opacity:0;transform:translateY(10px);} to{opacity:1;transform:translateY(0);} }
+  .section.active { animation:fadeIn 0.3s ease; }
+
+  /* RESPONSIVE */
+  @media(max-width:768px) {
+    main { padding:16px; }
+    header { padding:16px; }
+    .nav-tabs { padding:8px 16px; }
+    .grid-2,.grid-3 { grid-template-columns:1fr; }
+    .arch-diagram { gap:0; }
+  }
+
+  /* SECTION HEADERS */
+  .section-header { margin-bottom:24px; }
+  .section-header h2 { font-family:'Syne',sans-serif; font-size:26px; font-weight:800; }
+  .section-header p { color:var(--muted); font-size:13px; margin-top:6px; }
+  .section-header .badge {
+    display:inline-block; font-family:'Space Mono',monospace; font-size:10px;
+    padding:3px 10px; border-radius:4px; background:rgba(0,229,255,0.1);
+    border:1px solid var(--accent); color:var(--accent); margin-right:8px;
+  }
+
+  /* SELECT */
+  select {
+    background:var(--surface); border:1px solid var(--border);
+    color:var(--text); padding:6px 10px; border-radius:6px;
+    font-family:'Space Mono',monospace; font-size:11px; outline:none;
+  }
+  select:focus { border-color:var(--accent); }
+
+  /* DIVIDER */
+  .divider { border:none; border-top:1px solid var(--border); margin:20px 0; }
+
+  /* FORMULA */
+  .formula {
+    background:var(--surface); border:1px solid var(--border); border-radius:8px;
+    padding:16px; font-family:'Space Mono',monospace; font-size:12px;
+    color:var(--accent3); text-align:center; margin:12px 0;
+  }
+
+  /* BADGE */
+  .pill {
+    display:inline-block; font-size:10px; padding:2px 8px; border-radius:20px;
+    font-family:'Space Mono',monospace;
+  }
+  .pill.cyan { background:rgba(0,229,255,0.12); color:var(--accent); }
+  .pill.amber { background:rgba(245,158,11,0.12); color:var(--accent3); }
+  .pill.green { background:rgba(16,185,129,0.12); color:var(--accent4); }
+  .pill.red { background:rgba(239,68,68,0.12); color:var(--danger); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Toll<span>Former</span> <span style="-webkit-text-fill-color:var(--muted);font-size:12px;font-weight:400;">| Attention Mechanism Playground</span></div>
+  <div class="header-tags">
+    <span class="tag live">● LIVE SIM</span>
+    <span class="tag">TRANSFORMER v2017</span>
+    <span class="tag">GPT-3 ARCH</span>
+  </div>
+</header>
+
+<nav class="nav-tabs">
+  <button class="tab-btn active" onclick="showTab('overview')">① Overview</button>
+  <button class="tab-btn" onclick="showTab('embeddings')">② Embeddings</button>
+  <button class="tab-btn" onclick="showTab('attention')">③ Attention Pattern</button>
+  <button class="tab-btn" onclick="showTab('qkv')">④ Q · K · V Matrices</button>
+  <button class="tab-btn" onclick="showTab('masking')">⑤ Masking</button>
+  <button class="tab-btn" onclick="showTab('multihead')">⑥ Multi-Head</button>
+  <button class="tab-btn" onclick="showTab('livesim')">⑦ Live Toll Sim</button>
+</nav>
+
+<main>
+
+<!-- ===================== SECTION 1: OVERVIEW ===================== -->
+<section id="overview" class="section active">
+  <div class="section-header">
+    <div><span class="badge">ARCHITECTURE</span><span class="badge" style="border-color:var(--accent3);color:var(--accent3);background:rgba(245,158,11,0.1);">TOLLING USE-CASE</span></div>
+    <h2>Transformer Attention — Tolling System</h2>
+    <p>How a transformer reads a sequence of toll events and attends to relevant context to predict outcomes.</p>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:20px;">
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>Transformer Pipeline</div>
+      <div class="arch-diagram" id="archDiagram">
+        <div class="arch-block" onclick="highlightArch(0)" data-tip="Raw toll event tokens: Vehicle type, plate, time, lane, speed">
+          <div class="icon">🚗</div>
+          <div class="label">INPUT</div>
+          <div class="name">Toll Events</div>
+        </div>
+        <div class="arch-arrow"></div>
+        <div class="arch-block" onclick="highlightArch(1)" data-tip="Each token → high-dimensional vector (12,288 dims in GPT-3)">
+          <div class="icon">📐</div>
+          <div class="label">STEP 1</div>
+          <div class="name">Embed</div>
+        </div>
+        <div class="arch-arrow"></div>
+        <div class="arch-block" onclick="highlightArch(2)" data-tip="96 heads × 96 layers computing Q·K·V attention">
+          <div class="icon">🧠</div>
+          <div class="label">STEP 2</div>
+          <div class="name">Attention ×96</div>
+        </div>
+        <div class="arch-arrow"></div>
+        <div class="arch-block" onclick="highlightArch(3)" data-tip="Feed-forward network refines contextual embeddings">
+          <div class="icon">⚙️</div>
+          <div class="label">STEP 3</div>
+          <div class="name">MLP ×96</div>
+        </div>
+        <div class="arch-arrow"></div>
+        <div class="arch-block" onclick="highlightArch(4)" data-tip="Final vector → prediction: toll class, fraud risk, congestion">
+          <div class="icon">🎯</div>
+          <div class="label">OUTPUT</div>
+          <div class="name">Predict</div>
+        </div>
+      </div>
+      <div id="archTip" style="min-height:36px;font-size:12px;color:var(--muted);text-align:center;padding:8px;border-top:1px solid var(--border);margin-top:10px;">
+        Click any block to learn more
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--accent3);box-shadow:0 0 8px var(--accent3);"></span>Tolling Context — Why Attention?</div>
+      <p style="font-size:12px;color:var(--muted);line-height:1.8;">
+        A toll system processes sequences of events: <span class="pill cyan">vehicle entry</span> → <span class="pill amber">lane selection</span> → <span class="pill green">payment</span> → <span class="pill cyan">exit</span>. Just like the word "mole" changes meaning with context, a <span class="pill amber">truck</span> token means different things near <span class="pill cyan">peak-hour</span> vs <span class="pill green">off-peak</span>. Attention lets the model relate any event to any other — even events far apart in time.
+      </p>
+      <hr class="divider">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:120px;background:var(--surface);border-radius:8px;padding:12px;">
+          <div style="font-size:20px;">🔍</div>
+          <div style="font-size:11px;font-weight:600;margin-top:4px;">Pattern Detection</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px;">Spot evasion across events</div>
+        </div>
+        <div style="flex:1;min-width:120px;background:var(--surface);border-radius:8px;padding:12px;">
+          <div style="font-size:20px;">⚡</div>
+          <div style="font-size:11px;font-weight:600;margin-top:4px;">Real-Time Class</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px;">Vehicle type from context</div>
+        </div>
+        <div style="flex:1;min-width:120px;background:var(--surface);border-radius:8px;padding:12px;">
+          <div style="font-size:20px;">📊</div>
+          <div style="font-size:11px;font-weight:600;margin-top:4px;">Congestion Pred</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px;">Next-window forecast</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-3" style="margin-bottom:20px;">
+    <div class="kpi"><div class="kpi-val" id="kpi1">175B</div><div class="kpi-label">GPT-3 Parameters</div><div class="kpi-delta">↑ 58B in attention heads</div></div>
+    <div class="kpi"><div class="kpi-val" id="kpi2">96×96</div><div class="kpi-label">Heads × Layers</div><div class="kpi-delta">9,216 attention patterns</div></div>
+    <div class="kpi"><div class="kpi-val" id="kpi3">12,288</div><div class="kpi-label">Embedding Dimensions</div><div class="kpi-delta">per token vector</div></div>
+  </div>
+
+  <div class="concept-row">
+    <div class="concept-card">
+      <h4>🚗 Token = Toll Event</h4>
+      <p>Each vehicle passing a toll plaza becomes a token — its type, speed, lane, time all encoded into a single high-dimensional vector called an embedding.</p>
+    </div>
+    <div class="concept-card">
+      <h4>🔗 Context Window</h4>
+      <p>The model sees a window of recent events simultaneously — just like a human dispatcher watching the last hour of footage — and each event can attend to all others.</p>
+    </div>
+    <div class="concept-card">
+      <h4>🎯 Prediction Goal</h4>
+      <p>Given a sequence of toll events, predict: next vehicle class, congestion level, fraud probability, or optimal lane routing — all from the final embedding vector.</p>
+    </div>
+    <div class="concept-card">
+      <h4>⚡ Parallelism</h4>
+      <p>All attention heads run simultaneously on GPUs — this massive parallelism is WHY transformers scaled so far, enabling real-time toll analytics at highway scale.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== SECTION 2: EMBEDDINGS ===================== -->
+<section id="embeddings" class="section">
+  <div class="section-header">
+    <span class="badge">STEP 1</span>
+    <h2>Token Embeddings</h2>
+    <p>Each toll event is mapped to a point in high-dimensional space. Similar events cluster together. Explore the semantic geometry.</p>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>Vehicle Event Tokens</div>
+      <div class="vehicle-grid" id="vehicleGrid">
+        <!-- populated by JS -->
+      </div>
+      <hr class="divider">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">Embedding dimensions shown (12,288D → projected to 2D via PCA):</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+        <div style="font-size:11px;"><span class="pill cyan">Dim 1</span> Vehicle Mass / Size</div>
+        <div style="font-size:11px;"><span class="pill amber">Dim 2</span> Time-of-Day Signal</div>
+        <div style="font-size:11px;"><span class="pill green">Dim 3</span> Speed / Urgency</div>
+      </div>
+      <canvas id="embeddingCanvas" width="360" height="280"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--accent3);box-shadow:0 0 8px var(--accent3);"></span>Embedding Vector Inspector</div>
+      <div id="vectorInspector">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Click a vehicle to inspect its embedding vector</div>
+      </div>
+      <hr class="divider">
+      <div class="card-title" style="margin-top:12px;"><span class="dot" style="background:var(--accent2);box-shadow:0 0 8px var(--accent2);"></span>Semantic Directions</div>
+      <div id="semanticDirs" style="display:flex;flex-direction:column;gap:8px;">
+        <div style="font-size:12px;color:var(--muted);">These directions in embedding space encode meaning:</div>
+        <!-- semantic direction bars -->
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== SECTION 3: ATTENTION PATTERN ===================== -->
+<section id="attention" class="section">
+  <div class="section-header">
+    <span class="badge">STEP 2A</span>
+    <h2>Attention Pattern</h2>
+    <p>Which toll events "attend to" which others? The attention matrix shows relevance weights between every pair of tokens.</p>
+  </div>
+
+  <div class="card" style="margin-bottom:20px;">
+    <div class="card-title"><span class="dot"></span>Toll Event Sequence</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Click any token to see what it attends to. Color = token type.</div>
+    <div class="token-row" id="tokenRow"></div>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+      <span class="pill cyan">■ Vehicle</span>
+      <span class="pill amber">■ Adjective/Context</span>
+      <span class="pill green">■ Action</span>
+      <span style="font-size:10px;color:var(--muted);">Hover tokens to see attention scores</span>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>Attention Matrix (Heatmap)</div>
+      <div class="attn-controls">
+        <div class="slider-wrap">
+          <label>Temperature:</label>
+          <input type="range" id="tempSlider" min="1" max="20" value="8" oninput="updateAttnMatrix()">
+          <span id="tempVal" style="font-family:'Space Mono',monospace;font-size:10px;color:var(--accent);min-width:24px;">8</span>
+        </div>
+        <button class="btn" onclick="randomizeAttn()">Randomize</button>
+        <button class="btn primary" onclick="updateAttnMatrix()">Recompute</button>
+      </div>
+      <div class="attn-grid-wrap">
+        <canvas id="attnCanvas" width="420" height="380"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--accent3);"></span>Softmax Distribution</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;" id="softmaxTitle">Attention weights for selected token (column)</div>
+      <div class="formula">softmax(QKᵀ / √dₖ)</div>
+      <div id="softmaxBars" style="display:flex;gap:4px;align-items:flex-end;height:120px;margin-top:16px;"></div>
+      <div id="softmaxLabels" style="display:flex;gap:4px;margin-top:4px;"></div>
+      <hr class="divider">
+      <div style="font-size:12px;color:var(--muted);">
+        <div style="margin-bottom:6px;"><span class="pill cyan">→</span> Higher temperature = sharper focus on one token</div>
+        <div><span class="pill amber">→</span> Lower temperature = distributed attention across many</div>
+      </div>
+      <div id="attnInterpretation" style="margin-top:12px;font-size:12px;color:var(--text);line-height:1.6;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== SECTION 4: QKV ===================== -->
+<section id="qkv" class="section">
+  <div class="section-header">
+    <span class="badge">STEP 2B</span>
+    <h2>Query · Key · Value Matrices</h2>
+    <p>The three learnable matrices that power attention. Each token generates Q, K, V vectors via matrix multiplication.</p>
+  </div>
+
+  <div class="card" style="margin-bottom:20px;">
+    <div class="formula" style="font-size:14px;">Attention(Q,K,V) = softmax(QKᵀ / √dₖ) · V</div>
+  </div>
+
+  <div class="grid-3" style="margin-bottom:20px;">
+    <div class="card">
+      <div class="card-title" style="color:var(--accent);"><span class="dot"></span>Query Matrix (Wq)</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">128 × 12,288 • "What am I looking for?"</div>
+      <div id="queryMatrixDisplay" class="matrix-display"></div>
+      <div style="margin-top:10px;font-size:11px;color:var(--muted);">
+        In tolling: <em>"I'm a truck — am I near peak-hour congestion?"</em>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="color:var(--accent3);"><span class="dot" style="background:var(--accent3);box-shadow:0 0 8px var(--accent3);"></span>Key Matrix (Wk)</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">128 × 12,288 • "What do I advertise?"</div>
+      <div id="keyMatrixDisplay" class="matrix-display"></div>
+      <div style="margin-top:10px;font-size:11px;color:var(--muted);">
+        In tolling: <em>"I'm peak-hour congestion — trucks should notice me!"</em>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="color:var(--accent4);"><span class="dot" style="background:var(--accent4);box-shadow:0 0 8px var(--accent4);"></span>Value Matrix (Wv)</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">128 × 12,288 • "What info do I send?"</div>
+      <div id="valueMatrixDisplay" class="matrix-display"></div>
+      <div style="margin-top:10px;font-size:11px;color:var(--muted);">
+        In tolling: <em>"Here's what congestion means for toll pricing."</em>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>Interactive QKV Flow — Select a Vehicle</div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;" id="qkvVehicleSelect"></div>
+    <div class="qkv-flow" id="qkvFlowViz">
+      <!-- populated by JS -->
+    </div>
+    <hr class="divider">
+    <div style="font-size:12px;color:var(--muted);line-height:1.8;">
+      <strong style="color:var(--text);">Parameter count (GPT-3 scale):</strong><br>
+      Wq: 128 × 12,288 = <span class="pill cyan">1.57M params</span>&nbsp;
+      Wk: 128 × 12,288 = <span class="pill amber">1.57M params</span>&nbsp;
+      Wv (down+up): <span class="pill green">1.57M × 2 params</span>&nbsp;
+      → Total per head: <span class="pill cyan">~6.3M</span> × 96 heads × 96 layers = <span class="pill green">~58B</span>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== SECTION 5: MASKING ===================== -->
+<section id="masking" class="section">
+  <div class="section-header">
+    <span class="badge">STEP 2C</span>
+    <h2>Causal Masking</h2>
+    <p>During training, future toll events cannot influence past ones. The upper triangle is masked to -∞ before softmax.</p>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>Attention Mask Visualizer</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">
+        <span class="pill green">■ ALLOWED</span> — can attend (past/present)&nbsp;
+        <span class="pill red">■ MASKED</span> — set to -∞ (future)
+      </div>
+      <select id="maskSeqSelect" onchange="buildMaskGrid()" style="margin-bottom:12px;">
+        <option value="4">4 events</option>
+        <option value="6" selected>6 events</option>
+        <option value="8">8 events</option>
+      </select>
+      <div id="maskGridWrap" style="overflow-x:auto;"></div>
+      <div style="margin-top:12px;font-size:11px;color:var(--muted);">Click any cell to see why it's masked/allowed</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--accent3);"></span>Why Masking Matters</div>
+      <div class="formula" style="font-size:12px;">Before softmax: set upper triangle = -∞<br>After softmax: e^(-∞) = 0</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.8;margin-top:12px;">
+        <div style="margin-bottom:8px;">🔴 <strong style="color:var(--danger);">Without masking:</strong> Training example at time T could "cheat" by reading T+1 data — the model memorizes answers instead of learning patterns.</div>
+        <div style="margin-bottom:8px;">🟢 <strong style="color:var(--accent4);">With masking:</strong> Each prediction only uses past context. One sequence = N training examples simultaneously!</div>
+        <div style="margin-bottom:8px;">🚗 <strong style="color:var(--accent);">Tolling context:</strong> When classifying vehicle at position T, only use entries T-1, T-2... Can't use data from vehicles that haven't arrived yet!</div>
+      </div>
+      <hr class="divider">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Masking efficiency gain:</div>
+      <div style="margin-bottom:6px;">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;"><span>Without masking</span><span>1 example</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:12%;background:var(--danger);"></div></div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;"><span>With masking (N=8 tokens)</span><span>8 examples</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:100%;"></div></div>
+      </div>
+      <div id="maskCellInfo" style="margin-top:16px;padding:12px;background:var(--surface);border-radius:8px;font-size:12px;min-height:50px;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== SECTION 6: MULTI-HEAD ===================== -->
+<section id="multihead" class="section">
+  <div class="section-header">
+    <span class="badge">STEP 2D</span>
+    <h2>Multi-Head Attention</h2>
+    <p>96 attention heads run in parallel, each learning a different type of relationship between toll events.</p>
+  </div>
+
+  <div class="card" style="margin-bottom:20px;">
+    <div class="card-title"><span class="dot"></span>Attention Heads — Toll System Specializations</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">Each head learns different patterns. Click a head to inspect its attention map.</div>
+    <div class="head-grid" id="headGrid"></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>Selected Head — Attention Pattern</div>
+      <canvas id="headAttnCanvas" width="380" height="320"></canvas>
+      <div id="headDescription" style="margin-top:10px;font-size:12px;color:var(--muted);"></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--accent2);"></span>Head Combination — Output</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">All 96 head outputs are summed, then passed through the output matrix W_O</div>
+      <canvas id="headCombineCanvas" width="380" height="200"></canvas>
+      <hr class="divider">
+      <div style="font-size:12px;color:var(--muted);line-height:1.8;">
+        <div><span class="pill cyan">96 heads</span> × <span class="pill amber">96 layers</span> = <span class="pill green">9,216 attention patterns</span></div>
+        <div style="margin-top:8px;">Each head's value_down (128D) → concatenated → output matrix W_O (12,288D) → refined embedding</div>
+        <div style="margin-top:8px;">Total attention params: <span class="pill cyan">~58 billion</span> (1/3 of GPT-3)</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== SECTION 7: LIVE SIM ===================== -->
+<section id="livesim" class="section">
+  <div class="section-header">
+    <span class="badge">LIVE</span>
+    <h2>Live Toll Plaza Simulation</h2>
+    <p>Watch the transformer process real-time vehicle sequences across multiple lanes. Attention connects related events.</p>
+  </div>
+
+  <!-- KPIs -->
+  <div class="grid-auto" style="margin-bottom:20px;">
+    <div class="kpi"><div class="kpi-val" id="simTotal">0</div><div class="kpi-label">Vehicles Processed</div></div>
+    <div class="kpi"><div class="kpi-val" id="simFraud">0</div><div class="kpi-label">Anomalies Flagged</div><div class="kpi-delta" style="color:var(--danger);">Fraud / Evasion</div></div>
+    <div class="kpi"><div class="kpi-val" id="simThroughput">0</div><div class="kpi-label">Throughput/min</div></div>
+    <div class="kpi"><div class="kpi-val" id="simAccuracy">98.2%</div><div class="kpi-label">Classification Acc</div></div>
+    <div class="kpi"><div class="kpi-val" id="simLatency">12ms</div><div class="kpi-label">Attention Latency</div></div>
+  </div>
+
+  <!-- LANES -->
+  <div id="tollLanes" style="margin-bottom:20px;"></div>
+
+  <!-- CONTROLS -->
+  <div style="display:flex;gap:10px;margin-bottom:20px;align-items:center;flex-wrap:wrap;">
+    <button class="btn primary" id="simBtn" onclick="toggleSim()">▶ Start Simulation</button>
+    <button class="btn" onclick="injectAnomaly()">⚠ Inject Anomaly</button>
+    <button class="btn" onclick="resetSim()">↺ Reset</button>
+    <div class="slider-wrap">
+      <label>Speed:</label>
+      <input type="range" id="simSpeed" min="500" max="3000" value="1500" step="100" oninput="updateSimSpeed(this.value)">
+      <span id="simSpeedLabel" style="font-size:10px;color:var(--accent);font-family:'Space Mono',monospace;">1.5s</span>
+    </div>
+    <select id="laneCount" onchange="initLanes()">
+      <option value="3" selected>3 Lanes</option>
+      <option value="5">5 Lanes</option>
+      <option value="8">8 Lanes</option>
+    </select>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>Live Attention Visualization</div>
+      <canvas id="liveAttnCanvas" width="420" height="260"></canvas>
+      <div style="margin-top:8px;font-size:11px;color:var(--muted);">Brighter lines = stronger attention between events. The model relates suspicious patterns across lanes.</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--accent3);"></span>Throughput & Events</div>
+      <canvas id="throughputCanvas" width="400" height="220"></canvas>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:20px;">
+    <div class="card-title"><span class="dot" style="background:var(--accent4);"></span>Transformer Decision Log</div>
+    <div class="log-box" id="logBox"></div>
+  </div>
+</section>
+
+</main>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+// ============================================================
+//  GLOBAL STATE
+// ============================================================
+let activeTab = 'overview';
+let simRunning = false;
+let simInterval = null;
+let simSpeed = 1500;
+let simTotal = 0;
+let simFraud = 0;
+let simThroughput = 0;
+let throughputHistory = [];
+let fraudHistory = [];
+let liveAttnData = [];
+let selectedToken = 3;
+let selectedHead = 0;
+let selectedVehicle = null;
+
+const VEHICLES = [
+  {id:'car',  emoji:'🚗', label:'Sedan',      class:'C1', mass:1.2, speed:0.7, peak:0.5},
+  {id:'suv',  emoji:'🚙', label:'SUV',        class:'C2', mass:1.8, speed:0.6, peak:0.6},
+  {id:'bus',  emoji:'🚌', label:'Bus',         class:'C4', mass:4.5, speed:0.3, peak:0.9},
+  {id:'truck',emoji:'🚛', label:'Semi-Truck',  class:'C5', mass:8.0, speed:0.2, peak:0.4},
+  {id:'mc',   emoji:'🏍️', label:'Motorcycle', class:'C1', mass:0.4, speed:0.9, peak:0.5},
+  {id:'van',  emoji:'🚐', label:'Van',         class:'C3', mass:2.8, speed:0.5, peak:0.7},
+  {id:'rv',   emoji:'🚌', label:'RV',          class:'C4', mass:5.5, speed:0.25,peak:0.3},
+  {id:'emer', emoji:'🚑', label:'Emergency',   class:'EX', mass:2.0, speed:0.95,peak:0.8},
+];
+
+const TOLL_TOKENS = [
+  {word:'PEAK-HOUR',  type:'adj',   emoji:'⏰'},
+  {word:'TRUCK',      type:'noun',  emoji:'🚛'},
+  {word:'SPEEDING',   type:'adj',   emoji:'⚡'},
+  {word:'SEDAN',      type:'noun',  emoji:'🚗'},
+  {word:'LANE-3',     type:'other', emoji:'🛣️'},
+  {word:'PAID',       type:'verb',  emoji:'💳'},
+  {word:'EVASION',    type:'adj',   emoji:'⚠️'},
+  {word:'MOTORCYCLE', type:'noun',  emoji:'🏍️'},
+];
+
+const HEAD_TYPES = [
+  {name:'Vehicle-Type Matcher', desc:'Matches vehicle classifications across the sequence', color:'#00e5ff'},
+  {name:'Time-Context Head',    desc:'Relates events to peak/off-peak time signals',        color:'#f59e0b'},
+  {name:'Fraud Pattern Head',   desc:'Attends to suspicious speed/payment combinations',    color:'#ef4444'},
+  {name:'Lane Proximity Head',  desc:'Groups events in adjacent physical lanes',            color:'#10b981'},
+  {name:'Speed Gradient Head',  desc:'Tracks acceleration patterns across vehicles',        color:'#7c3aed'},
+  {name:'Payment Flow Head',    desc:'Follows payment sequences and failures',              color:'#06b6d4'},
+  {name:'Congestion Head',      desc:'Identifies high-density vehicle clustering',          color:'#f97316'},
+  {name:'Class Override Head',  desc:'Emergency vehicle and exemption detection',           color:'#a78bfa'},
+];
+
+// ============================================================
+//  TAB SWITCHING
+// ============================================================
+function showTab(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(name).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach((b,i) => {
+    const ids = ['overview','embeddings','attention','qkv','masking','multihead','livesim'];
+    if(ids[i]===name) b.classList.add('active');
+  });
+  activeTab = name;
+  if(name==='embeddings') initEmbeddings();
+  if(name==='attention')  initAttention();
+  if(name==='qkv')        initQKV();
+  if(name==='masking')    buildMaskGrid();
+  if(name==='multihead')  initMultiHead();
+  if(name==='livesim')    initLiveSim();
+}
+
+// ============================================================
+//  SECTION 1: OVERVIEW
+// ============================================================
+function highlightArch(idx) {
+  const blocks = document.querySelectorAll('.arch-block');
+  blocks.forEach((b,i) => b.classList.toggle('highlight', i===idx));
+  const tips = [
+    '🚗 Raw toll events tokenized: vehicle type, plate ID, lane number, timestamp, speed, class — each event becomes one token.',
+    '📐 Token Embedding: each token → 12,288-dimensional vector. Position is also encoded here (positional embedding).',
+    '🧠 Multi-Head Attention: 96 heads × 96 layers. Q·K dot product finds which events relate to which. V updates embeddings.',
+    '⚙️ Multi-Layer Perceptron: 2/3 of GPT-3\'s 175B parameters live here. Refines contextual representations nonlinearly.',
+    '🎯 Final vector → probability distribution over outcomes: vehicle class, congestion level, fraud risk, optimal toll rate.'
+  ];
+  document.getElementById('archTip').innerHTML = tips[idx] || 'Click any block';
+}
+
+// ============================================================
+//  SECTION 2: EMBEDDINGS
+// ============================================================
+function initEmbeddings() {
+  buildVehicleGrid();
+  drawEmbeddingCanvas();
+  buildSemanticDirs();
+}
+
+function buildVehicleGrid() {
+  const g = document.getElementById('vehicleGrid');
+  g.innerHTML = VEHICLES.map((v,i) =>
+    `<div class="vehicle-chip ${selectedVehicle===i?'selected':''}" onclick="selectVehicle(${i})" title="${v.label}">
+      <span style="font-size:20px;">${v.emoji}</span>
+      <span>${v.label}</span>
+      <span class="pill ${v.class==='EX'?'red':'cyan'}" style="margin-left:4px;">${v.class}</span>
+    </div>`
+  ).join('');
+}
+
+function selectVehicle(idx) {
+  selectedVehicle = idx;
+  buildVehicleGrid();
+  drawEmbeddingCanvas();
+  buildVectorInspector();
+}
+
+function drawEmbeddingCanvas() {
+  const c = document.getElementById('embeddingCanvas');
+  const ctx = c.getContext('2d');
+  const W=c.width, H=c.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#0f1117'; ctx.fillRect(0,0,W,H);
+
+  // grid
+  ctx.strokeStyle='rgba(255,255,255,0.04)'; ctx.lineWidth=1;
+  for(let x=0;x<W;x+=30){ ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke(); }
+  for(let y=0;y<H;y+=30){ ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke(); }
+
+  // axes
+  ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(40,H-30); ctx.lineTo(W-10,H-30); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(40,10); ctx.lineTo(40,H-30); ctx.stroke();
+  ctx.fillStyle='#64748b'; ctx.font='10px Space Mono';
+  ctx.fillText('Vehicle Mass →',80,H-12);
+  ctx.save(); ctx.rotate(-Math.PI/2); ctx.fillText('Speed Signal →',-(H-80),14); ctx.restore();
+
+  // embed points — deterministic from vehicle properties
+  const colors=['#00e5ff','#f59e0b','#10b981','#ef4444','#7c3aed','#06b6d4','#f97316','#a78bfa'];
+  VEHICLES.forEach((v,i) => {
+    const x = 50 + v.mass/9*(W-70);
+    const y = H-40 - v.speed*(H-60);
+    const r = i===selectedVehicle?10:6;
+    // glow
+    if(i===selectedVehicle){
+      const g2=ctx.createRadialGradient(x,y,0,x,y,20);
+      g2.addColorStop(0,colors[i%colors.length]+'80');
+      g2.addColorStop(1,'transparent');
+      ctx.fillStyle=g2; ctx.beginPath(); ctx.arc(x,y,20,0,Math.PI*2); ctx.fill();
+    }
+    ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2);
+    ctx.fillStyle=colors[i%colors.length]; ctx.fill();
+    ctx.fillStyle='white'; ctx.font=`${i===selectedVehicle?12:9}px DM Sans`;
+    ctx.fillText(v.label,x+r+3,y+4);
+  });
+
+  // similarity lines from selected
+  if(selectedVehicle!==null){
+    const sv=VEHICLES[selectedVehicle];
+    const sx=50+sv.mass/9*(W-70), sy=H-40-sv.speed*(H-60);
+    VEHICLES.forEach((v,i)=>{
+      if(i===selectedVehicle) return;
+      const x=50+v.mass/9*(W-70), y=H-40-v.speed*(H-60);
+      const sim=1-Math.abs(sv.mass-v.mass)/9*0.5-Math.abs(sv.speed-v.speed)*0.5;
+      ctx.strokeStyle=`rgba(0,229,255,${sim*0.4})`; ctx.lineWidth=sim*2;
+      ctx.setLineDash([4,4]);
+      ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(x,y); ctx.stroke();
+      ctx.setLineDash([]);
+    });
+  }
+}
+
+function buildVectorInspector() {
+  const v = VEHICLES[selectedVehicle];
+  const dims=['Vehicle Mass','Speed Signal','Peak-Hour Weight','Axle Count Est.','Payment Class','Emission Tag','Emergency Flag','Lane Pref'];
+  const vals=[v.mass/9,v.speed,v.peak,v.mass/12,(v.class==='EX'?0:0.5+Math.random()*0.3),1-v.mass/10,(v.id==='emer'?1:0),Math.random()];
+  const el=document.getElementById('vectorInspector');
+  el.innerHTML=`<div style="font-size:13px;font-weight:600;margin-bottom:10px;">${v.emoji} ${v.label} — Embedding Vector (8D preview)</div>`+
+    dims.map((d,i)=>{
+      const pct=Math.max(0,Math.min(1,vals[i]));
+      const col=pct>0.6?'#00e5ff':pct>0.3?'#f59e0b':'#7c3aed';
+      return `<div style="margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:3px;">
+          <span>${d}</span><span style="color:${col};font-family:'Space Mono',monospace;">${pct.toFixed(3)}</span>
+        </div>
+        <div style="background:var(--border);height:6px;border-radius:3px;overflow:hidden;">
+          <div style="height:100%;width:${pct*100}%;background:${col};border-radius:3px;transition:width 0.4s;"></div>
+        </div>
+      </div>`;
+    }).join('');
+}
+
+function buildSemanticDirs() {
+  const el=document.getElementById('semanticDirs');
+  const dirs=[
+    {name:'Mass Direction',  from:'Motorcycle',to:'Semi-Truck', desc:'Adding this vector transforms light → heavy vehicles', color:'#00e5ff'},
+    {name:'Speed Direction',  from:'Truck',    to:'Motorcycle',desc:'Subtracting gives faster/lighter movement profile',   color:'#f59e0b'},
+    {name:'Priority Axis',   from:'Sedan',    to:'Emergency',  desc:'Emergency flag lives in this orthogonal direction',   color:'#ef4444'},
+  ];
+  el.innerHTML=dirs.map(d=>`
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;">
+      <div style="font-size:11px;font-weight:600;color:${d.color};margin-bottom:4px;">${d.name}</div>
+      <div style="font-size:10px;color:var(--muted);">${d.from} → ${d.to}: ${d.desc}</div>
+    </div>`).join('');
+}
+
+// ============================================================
+//  SECTION 3: ATTENTION PATTERN
+// ============================================================
+let attnScores = [];
+
+function initAttention() {
+  buildTokenRow();
+  randomizeAttn();
+}
+
+function buildTokenRow() {
+  const row = document.getElementById('tokenRow');
+  row.innerHTML = TOLL_TOKENS.map((t,i)=>`
+    <div style="margin-top:16px;position:relative;">
+      <div style="font-size:9px;color:var(--muted);text-align:center;margin-bottom:4px;">${t.emoji}</div>
+      <div class="token ${t.type} ${i===selectedToken?'selected':''}" onclick="selectToken(${i})">${t.word}</div>
+    </div>`).join('');
+}
+
+function selectToken(idx) {
+  selectedToken = idx;
+  buildTokenRow();
+  drawAttnMatrix();
+  updateSoftmaxBars();
+}
+
+function randomizeAttn() {
+  const N = TOLL_TOKENS.length;
+  attnScores = Array.from({length:N},(_,i)=>Array.from({length:N},(_,j)=>{
+    // Semantic relevance bias
+    const ti=TOLL_TOKENS[i], tj=TOLL_TOKENS[j];
+    let base = Math.random()*4-2;
+    if(ti.type==='adj'  && tj.type==='noun') base+=3;
+    if(ti.type==='noun' && tj.type==='adj')  base+=2;
+    if(ti.type===tj.type) base+=1;
+    if(ti.word.includes('EVASION')) base+=1.5;
+    if(j>i) base-=5; // causal masking effect
+    return base;
+  }));
+  drawAttnMatrix();
+  updateSoftmaxBars();
+}
+
+function softmaxCol(scores, col, temp) {
+  const N=scores.length;
+  const vals=scores.map(r=>r[col]);
+  const scaled=vals.map(v=>v*temp/10);
+  const maxV=Math.max(...scaled);
+  const exps=scaled.map(v=>Math.exp(Math.min(v-maxV,20)));
+  const sum=exps.reduce((a,b)=>a+b,0);
+  return exps.map(e=>e/sum);
+}
+
+function updateAttnMatrix() {
+  const t=parseInt(document.getElementById('tempSlider').value);
+  document.getElementById('tempVal').textContent=t;
+  drawAttnMatrix();
+  updateSoftmaxBars();
+}
+
+function drawAttnMatrix() {
+  const c=document.getElementById('attnCanvas');
+  const ctx=c.getContext('2d');
+  const N=TOLL_TOKENS.length;
+  const W=c.width, H=c.height;
+  const pad=60, cell=(Math.min(W,H)-pad*2)/N;
+  const temp=parseInt(document.getElementById('tempSlider').value);
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#0f1117'; ctx.fillRect(0,0,W,H);
+
+  // Compute softmax per column
+  const normalized=Array.from({length:N},(_,col)=>softmaxCol(attnScores,col,temp));
+
+  for(let row=0;row<N;row++){
+    for(let col=0;col<N;col++){
+      const v=normalized[col][row];
+      const x=pad+col*cell, y=pad+row*cell;
+      const alpha=Math.max(0,Math.min(1,v));
+      const col_=(v>0.4)?`rgba(0,229,255,${alpha})`:(v>0.15)?`rgba(124,58,237,${alpha*0.8})`:`rgba(15,17,23,0.9)`;
+      ctx.fillStyle=col_; ctx.fillRect(x,y,cell-2,cell-2);
+      ctx.fillStyle='rgba(255,255,255,0.6)'; ctx.font='8px Space Mono';
+      ctx.fillText(v.toFixed(2),x+2,y+cell*0.65);
+    }
+  }
+
+  // Highlight selected column
+  if(selectedToken>=0) {
+    ctx.strokeStyle='rgba(0,229,255,0.8)'; ctx.lineWidth=2;
+    ctx.strokeRect(pad+selectedToken*cell-1,pad-1,cell,N*cell);
+  }
+
+  // Labels
+  ctx.fillStyle='#64748b'; ctx.font='9px Space Mono';
+  TOLL_TOKENS.forEach((t,i)=>{
+    ctx.save(); ctx.translate(pad+i*cell+cell/2, pad-6); ctx.rotate(-Math.PI/4);
+    ctx.fillText(t.word.slice(0,8),0,0); ctx.restore();
+    ctx.fillText(t.word.slice(0,6),2,pad+i*cell+cell/2+3);
+  });
+
+  // "Attends to" label
+  ctx.fillStyle='#64748b'; ctx.font='10px Space Mono';
+  ctx.save(); ctx.translate(8,H/2); ctx.rotate(-Math.PI/2); ctx.fillText('From (keys)',0,0); ctx.restore();
+  ctx.fillText('To (queries)',W/2-40,H-4);
+}
+
+function updateSoftmaxBars() {
+  const N=TOLL_TOKENS.length;
+  const temp=parseInt(document.getElementById('tempSlider').value);
+  const weights=softmaxCol(attnScores,selectedToken,temp);
+  const maxW=Math.max(...weights);
+  const colors=['#00e5ff','#f59e0b','#10b981','#ef4444','#7c3aed','#06b6d4','#f97316','#a78bfa'];
+
+  const barsEl=document.getElementById('softmaxBars');
+  const labelsEl=document.getElementById('softmaxLabels');
+  barsEl.innerHTML=weights.map((w,i)=>`
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:120px;">
+      <div style="font-family:'Space Mono',monospace;font-size:8px;color:${colors[i%colors.length]};margin-bottom:3px;">${(w*100).toFixed(1)}%</div>
+      <div style="width:100%;border-radius:4px 4px 0 0;height:${w/maxW*90}px;background:${colors[i%colors.length]};min-height:2px;transition:height 0.4s;"></div>
+    </div>`).join('');
+  labelsEl.innerHTML=weights.map((_,i)=>`
+    <div style="flex:1;text-align:center;font-size:8px;font-family:'Space Mono',monospace;color:var(--muted);word-break:break-all;">${TOLL_TOKENS[i].word.slice(0,6)}</div>`).join('');
+
+  // Interpretation
+  const maxIdx=weights.indexOf(maxW);
+  const t=TOLL_TOKENS[selectedToken], src=TOLL_TOKENS[maxIdx];
+  document.getElementById('attnInterpretation').innerHTML=
+    `<span style="color:var(--accent);">${t.emoji} ${t.word}</span> most strongly attends to <span style="color:var(--accent3);">${src.emoji} ${src.word}</span> (${(maxW*100).toFixed(1)}%). ${getAttnNote(t,src)}`;
+  document.getElementById('softmaxTitle').textContent=`Attention from column: ${t.word}`;
+}
+
+function getAttnNote(t,src){
+  if(t.type==='noun' && src.type==='adj') return '✓ Noun correctly attending to its modifying adjective.';
+  if(t.word.includes('TRUCK') && src.word.includes('PEAK')) return '✓ Truck attends to time context for toll class calculation.';
+  if(t.word.includes('PAID') && src.word.includes('EVASION')) return '⚠ Payment event strongly attends to evasion signal — anomaly detected.';
+  return 'Context embeddings being updated with relevant information.';
+}
+
+// ============================================================
+//  SECTION 4: QKV
+// ============================================================
+function initQKV() {
+  drawMatrix('queryMatrixDisplay', '#00e5ff', 6, 8);
+  drawMatrix('keyMatrixDisplay',   '#f59e0b', 6, 8);
+  drawMatrix('valueMatrixDisplay', '#10b981', 6, 8);
+  buildQKVVehicleSelect();
+  drawQKVFlow(0);
+}
+
+function drawMatrix(id, color, rows, cols) {
+  const el=document.getElementById(id);
+  let html='';
+  for(let r=0;r<rows;r++){
+    html+='<div class="matrix-row">';
+    for(let c=0;c<cols;c++){
+      const v=(Math.random()*2-1);
+      const alpha=Math.abs(v);
+      const col=v>0?`rgba(0,229,255,${alpha*0.8})`:`rgba(124,58,237,${alpha*0.8})`;
+      html+=`<div class="matrix-cell" style="background:${col};">${v.toFixed(2)}</div>`;
+    }
+    html+='</div>';
+  }
+  html+=`<div style="margin-top:6px;font-size:9px;color:var(--muted);">... (showing ${rows}×${cols} of 128×12,288)</div>`;
+  el.innerHTML=html;
+}
+
+function buildQKVVehicleSelect() {
+  const el=document.getElementById('qkvVehicleSelect');
+  el.innerHTML=VEHICLES.slice(0,5).map((v,i)=>
+    `<button class="btn ${i===0?'primary':''}" onclick="drawQKVFlow(${i});this.parentElement.querySelectorAll('.btn').forEach(b=>b.classList.remove('primary'));this.classList.add('primary');">${v.emoji} ${v.label}</button>`
+  ).join('');
+}
+
+function drawQKVFlow(idx) {
+  const v=VEHICLES[idx];
+  const dims=8;
+  const colors=['#00e5ff','#f59e0b','#10b981'];
+  const el=document.getElementById('qkvFlowViz');
+  function vecVis(baseVal, color, label) {
+    const vals=Array.from({length:dims},(_,i)=>baseVal+Math.sin(i*1.3+baseVal*10)*0.5);
+    const maxV=Math.max(...vals.map(Math.abs));
+    return `<div class="qkv-block">
+      <h5 style="color:${color};">${label} Vector</h5>
+      <div class="vector-vis">${vals.map(val=>{
+        const p=Math.abs(val)/maxV;
+        const c=val>0?color:'#7c3aed';
+        return `<div class="vector-cell" style="background:${c};opacity:${0.3+p*0.7};height:${30+p*40}px;">
+          <span style="font-size:7px;writing-mode:vertical-rl;">${val.toFixed(1)}</span>
+        </div>`;
+      }).join('')}</div>
+      <div style="font-size:9px;color:var(--muted);margin-top:6px;">128D projection</div>
+    </div>`;
+  }
+  el.innerHTML=
+    `<div class="qkv-block" style="max-width:140px;">
+      <h5>${v.emoji} ${v.label} Embedding</h5>
+      <div class="vector-vis">${Array.from({length:dims},(_,i)=>{
+        const val=Math.sin(i*2.1+v.mass)*v.speed;
+        const p=Math.abs(val); const c='#a78bfa';
+        return `<div class="vector-cell" style="background:${c};opacity:${0.3+p*0.7};height:${30+p*30}px;">
+          <span style="font-size:7px;writing-mode:vertical-rl;">${val.toFixed(1)}</span>
+        </div>`;
+      }).join('')}</div>
+      <div style="font-size:9px;color:var(--muted);margin-top:6px;">12,288D embedding</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:center;">
+      <div style="font-size:20px;color:var(--accent);">×Wq</div>
+      <div style="font-size:20px;color:var(--accent3);">×Wk</div>
+      <div style="font-size:20px;color:var(--accent4);">×Wv</div>
+    </div>
+    ${vecVis(v.mass,'#00e5ff','Query (Q)')}
+    <div class="flow-arrow-big">→</div>
+    ${vecVis(v.speed,'#f59e0b','Key (K)')}
+    <div class="flow-arrow-big">→</div>
+    ${vecVis(v.peak,'#10b981','Value (V)')}`;
+}
+
+// ============================================================
+//  SECTION 5: MASKING
+// ============================================================
+function buildMaskGrid() {
+  const N=parseInt(document.getElementById('maskSeqSelect').value);
+  const tokens=TOLL_TOKENS.slice(0,N);
+  const el=document.getElementById('maskGridWrap');
+
+  // Header row
+  let html=`<div style="display:grid;grid-template-columns:repeat(${N+1},48px);gap:3px;">`;
+  html+=`<div class="mask-header"></div>`;
+  tokens.forEach(t=>{ html+=`<div class="mask-header">${t.emoji}<br>${t.word.slice(0,5)}</div>`; });
+
+  tokens.forEach((from,row)=>{
+    html+=`<div style="display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--muted);width:48px;font-family:'Space Mono',monospace;">${from.word.slice(0,5)}</div>`;
+    tokens.forEach((to,col)=>{
+      const allowed=col<=row;
+      const cls=allowed?'allowed':'masked';
+      const val=allowed?(Math.random()*0.8+0.1).toFixed(2):'-∞';
+      html+=`<div class="mask-cell ${cls}" onclick="showMaskInfo(${row},${col},${allowed})" title="${from.word}→${to.word}">
+        <span style="font-size:11px;">${allowed?'✓':'✗'}</span>
+        <span style="font-size:8px;">${val}</span>
+      </div>`;
+    });
+  });
+  html+=`</div>`;
+  el.innerHTML=html;
+}
+
+function showMaskInfo(row,col,allowed) {
+  const from=TOLL_TOKENS[row], to=TOLL_TOKENS[col];
+  const el=document.getElementById('maskCellInfo');
+  if(allowed){
+    el.innerHTML=`<span class="pill green">✓ ALLOWED</span> <strong>${from.word}</strong> can attend to <strong>${to.word}</strong> — "${to.word}" occurred at position ${col}, which is in the past relative to position ${row}. This attention weight is kept.`;
+  } else {
+    el.innerHTML=`<span class="pill red">✗ MASKED</span> <strong>${from.word}</strong> (pos ${row}) CANNOT attend to <strong>${to.word}</strong> (pos ${col}) — that event is in the future! Set to -∞ so softmax produces 0. Training integrity preserved.`;
+  }
+}
+
+// ============================================================
+//  SECTION 6: MULTI-HEAD
+// ============================================================
+function initMultiHead() {
+  buildHeadGrid();
+  drawHeadAttn(0);
+  drawHeadCombine();
+}
+
+function buildHeadGrid() {
+  const el=document.getElementById('headGrid');
+  el.innerHTML=HEAD_TYPES.map((h,i)=>{
+    const N=5;
+    const miniData=Array.from({length:N},(_,r)=>Array.from({length:N},(_,c)=>c<=r?(Math.random()*0.8+0.1):0));
+    let miniHtml='';
+    for(let r=0;r<N;r++){
+      miniHtml+=`<div class="mini-row">`;
+      for(let c=0;c<N;c++){
+        const v=miniData[r][c];
+        const col=v>0?h.color+'99':'#1e2233';
+        miniHtml+=`<div class="mini-cell" style="background:${col};opacity:${0.2+v*0.8};"></div>`;
+      }
+      miniHtml+=`</div>`;
+    }
+    const score=(80+Math.random()*18).toFixed(1);
+    return `<div class="head-card ${i===selectedHead?'active':''}" onclick="selectHead(${i})">
+      <div class="head-num" style="color:${h.color};">H${String(i+1).padStart(2,'0')}</div>
+      <div class="head-type">${h.name}</div>
+      <div class="mini-attn">${miniHtml}</div>
+      <div class="head-score">Acc: ${score}%</div>
+    </div>`;
+  }).join('');
+}
+
+function selectHead(idx) {
+  selectedHead=idx;
+  buildHeadGrid();
+  drawHeadAttn(idx);
+}
+
+function drawHeadAttn(headIdx) {
+  const h=HEAD_TYPES[headIdx];
+  const c=document.getElementById('headAttnCanvas');
+  const ctx=c.getContext('2d');
+  const N=TOLL_TOKENS.length;
+  const W=c.width, H=c.height;
+  const pad=55, cell=(Math.min(W,H)-pad*1.5)/N;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#0f1117'; ctx.fillRect(0,0,W,H);
+
+  // Head-specific attention biases
+  const biases={
+    0:(i,j)=>TOLL_TOKENS[i].type===TOLL_TOKENS[j].type?1.5:0,
+    1:(i,j)=>TOLL_TOKENS[i].word.includes('PEAK')||TOLL_TOKENS[j].word.includes('PEAK')?2:0,
+    2:(i,j)=>TOLL_TOKENS[i].word.includes('EVASION')||TOLL_TOKENS[j].word.includes('EVASION')?3:0,
+    3:(i,j)=>Math.abs(i-j)<=1?2:0,
+    4:(i,j)=>TOLL_TOKENS[i].word.includes('SPEED')||TOLL_TOKENS[j].word.includes('SPEED')?2.5:0,
+    5:(i,j)=>TOLL_TOKENS[i].word.includes('PAID')||TOLL_TOKENS[j].word.includes('PAID')?2:0,
+    6:(i,j)=>0,
+    7:(i,j)=>TOLL_TOKENS[i].type==='other'||TOLL_TOKENS[j].type==='other'?1.5:0,
+  };
+  const bias=biases[headIdx]||((i,j)=>0);
+
+  for(let row=0;row<N;row++){
+    for(let col=0;col<N;col++){
+      if(col>row){ctx.fillStyle='rgba(15,17,23,0.8)';ctx.fillRect(pad+col*cell,pad+row*cell,cell-2,cell-2);continue;}
+      const raw=Math.random()*2+bias(row,col);
+      const v=Math.min(1,raw/4);
+      ctx.fillStyle=`${h.color}${Math.round(v*200).toString(16).padStart(2,'0')}`;
+      ctx.fillRect(pad+col*cell,pad+row*cell,cell-2,cell-2);
+    }
+  }
+  // labels
+  ctx.fillStyle='#64748b'; ctx.font='9px Space Mono';
+  TOLL_TOKENS.forEach((t,i)=>{
+    ctx.save(); ctx.translate(pad+i*cell+cell/2,pad-5); ctx.rotate(-Math.PI/4);
+    ctx.fillText(t.word.slice(0,6),0,0); ctx.restore();
+    ctx.fillText(t.word.slice(0,5),2,pad+i*cell+cell/2+3);
+  });
+  document.getElementById('headDescription').innerHTML=
+    `<span class="pill cyan">H${String(headIdx+1).padStart(2,'0')}</span> <strong>${h.name}</strong><br>${h.desc}`;
+}
+
+function drawHeadCombine() {
+  const c=document.getElementById('headCombineCanvas');
+  const ctx=c.getContext('2d');
+  const W=c.width, H=c.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#0f1117'; ctx.fillRect(0,0,W,H);
+
+  // Draw stacked bars representing head contributions
+  const heads=8;
+  const bw=30, gap=8, startX=20;
+  const headColors=['#00e5ff','#f59e0b','#ef4444','#10b981','#7c3aed','#06b6d4','#f97316','#a78bfa'];
+  for(let i=0;i<heads;i++){
+    const x=startX+i*(bw+gap);
+    const vals=Array.from({length:4},()=>Math.random()*0.25);
+    let y=H-20;
+    vals.forEach((v,j)=>{
+      const bh=v*(H-40);
+      ctx.fillStyle=headColors[(i+j)%headColors.length]+'aa';
+      ctx.fillRect(x,y-bh,bw,bh);
+      y-=bh;
+    });
+    ctx.fillStyle='#64748b'; ctx.font='8px Space Mono';
+    ctx.save(); ctx.translate(x+bw/2,H-5); ctx.fillText(`H${i+1}`,0,0); ctx.restore();
+  }
+  // Sum arrow
+  const lastX=startX+heads*(bw+gap)+10;
+  ctx.fillStyle='#00e5ff'; ctx.font='12px Space Mono'; ctx.fillText('→ Σ → W_O →',lastX,H/2+4);
+
+  // Final embedding bar
+  const fX=lastX+100;
+  const grad=ctx.createLinearGradient(fX,0,fX,H);
+  grad.addColorStop(0,'#7c3aed'); grad.addColorStop(1,'#00e5ff');
+  ctx.fillStyle=grad; ctx.fillRect(fX,20,35,H-40);
+  ctx.fillStyle='#fff'; ctx.font='8px Space Mono';
+  ctx.save(); ctx.translate(fX+17,H/2); ctx.rotate(-Math.PI/2); ctx.fillText('Refined Embedding',0,0); ctx.restore();
+}
+
+// ============================================================
+//  SECTION 7: LIVE SIM
+// ============================================================
+const LANE_NAMES=['Express ETC','Lane 1 — Cash','Lane 2 — Mixed','Lane 3 — HOV','Lane 4 — Truck','Lane 5 — Bus','Lane 6 — Motorcycle','Lane 7 — Night'];
+let laneVehicles=[];
+let laneCount=3;
+let logLines=[];
+let throughputData=[];
+let liveAttnMatrix=[];
+let particleX=0;
+let laneStates=[];
+
+function initLiveSim() {
+  initLanes();
+  drawLiveAttn();
+  drawThroughput();
+}
+
+function initLanes() {
+  laneCount=parseInt(document.getElementById('laneCount').value);
+  laneVehicles=Array.from({length:laneCount},()=>[]);
+  laneStates=Array.from({length:laneCount},()=>({status:'idle',lastVehicle:null}));
+  const el=document.getElementById('tollLanes');
+  el.innerHTML=LANE_NAMES.slice(0,laneCount).map((name,i)=>`
+    <div class="toll-lane">
+      <div class="lane-label"><span class="status-dot green" id="dot-${i}"></span>${name}</div>
+      <div class="lane-vehicles" id="lane-${i}"></div>
+      <div class="lane-status" id="lane-status-${i}">
+        <div style="font-size:9px;color:var(--muted);">QUEUE: <span id="q-${i}">0</span></div>
+        <div style="font-size:9px;color:var(--muted);margin-top:4px;">LAST: <span id="last-${i}">—</span></div>
+      </div>
+    </div>`).join('');
+  addLog('SYS','Toll plaza initialized — '+laneCount+' lanes active','info');
+}
+
+function toggleSim() {
+  simRunning=!simRunning;
+  document.getElementById('simBtn').textContent=simRunning?'⏸ Pause':'▶ Start Simulation';
+  if(simRunning) {
+    simInterval=setInterval(simTick,simSpeed);
+    addLog('SYS','Simulation started — transformer processing active','info');
+  } else {
+    clearInterval(simInterval);
+    addLog('SYS','Simulation paused','warn');
+  }
+}
+
+function updateSimSpeed(val) {
+  simSpeed=parseInt(val);
+  document.getElementById('simSpeedLabel').textContent=(simSpeed/1000).toFixed(1)+'s';
+  if(simRunning){ clearInterval(simInterval); simInterval=setInterval(simTick,simSpeed); }
+}
+
+function simTick() {
+  const lane=Math.floor(Math.random()*laneCount);
+  const v=VEHICLES[Math.floor(Math.random()*VEHICLES.length)];
+  const plate='AB'+Math.floor(1000+Math.random()*9000);
+  const isAnomaly=Math.random()<0.04;
+  const isSpeed=Math.random()<0.07;
+
+  addVehicle(lane,v,plate,isAnomaly,isSpeed);
+  simTotal++;
+  if(isAnomaly||isSpeed) simFraud++;
+  simThroughput=Math.round(simTotal/((Date.now()-(startTime||Date.now()))/60000+0.01));
+  throughputData.push({t:simTotal,v:3+Math.random()*5,fraud:isAnomaly?1:0});
+  if(throughputData.length>40) throughputData.shift();
+
+  updateKPIs();
+  updateLiveAttn(lane,v,isAnomaly);
+  drawLiveAttn();
+  drawThroughput();
+}
+
+let startTime=null;
+
+function addVehicle(lane,v,plate,anomaly,speeding) {
+  if(!startTime) startTime=Date.now();
+  const laneEl=document.getElementById('lane-'+lane);
+  if(!laneEl) return;
+  const id='veh-'+Date.now();
+  const cls=anomaly?'anomaly':speeding?'anomaly':'';
+
+  const el=document.createElement('div');
+  el.className='vehicle-token processing '+cls;
+  el.id=id;
+  el.innerHTML=`<span class="vehicle-icon">${v.emoji}</span><span class="vehicle-plate">${plate}</span><span class="vehicle-class">${v.class}${speeding?' ⚡':anomaly?' ⚠':'✓'}</span>`;
+  el.onclick=()=>selectVehicleToken(el,v,plate,anomaly,speeding);
+  laneEl.appendChild(el);
+
+  // Process after delay
+  setTimeout(()=>{
+    el.classList.remove('processing');
+    el.classList.add(anomaly||speeding?'anomaly':'processed');
+
+    // Attention visualization on this token
+    if(anomaly) {
+      addLog('⚠ FRAUD','Attention head H03 flagged '+plate+' — '+v.label+' matches evasion pattern','err');
+    } else if(speeding) {
+      addLog('⚡ SPEED','Speed anomaly detected: '+plate+' '+v.label+' — reclassifying toll','warn');
+    } else {
+      addLog('✓ OK',''+plate+' '+v.label+' ['+v.class+'] processed → toll=$'+(2+Math.random()*8).toFixed(2),'ok');
+    }
+
+    // Keep only 6 vehicles visible
+    const children=laneEl.children;
+    if(children.length>6) laneEl.removeChild(children[0]);
+
+    document.getElementById('q-'+lane).textContent=children.length;
+    document.getElementById('last-'+lane).textContent=v.emoji+' '+plate;
+    const dot=document.getElementById('dot-'+lane);
+    if(dot){
+      dot.className='status-dot '+(children.length>4?'yellow':'green');
+      if(anomaly) dot.className='status-dot red';
+    }
+  },600);
+}
+
+function selectVehicleToken(el,v,plate,anomaly,speeding) {
+  document.querySelectorAll('.vehicle-token').forEach(e=>e.style.outline='none');
+  el.style.outline='2px solid var(--accent)';
+  addLog('INFO','Inspecting '+plate+' — Embedding dim 0 (mass)='+v.mass.toFixed(2)+' dim 1 (speed)='+v.speed.toFixed(2),'info');
+}
+
+function injectAnomaly() {
+  const lane=Math.floor(Math.random()*laneCount);
+  const v=VEHICLES[Math.floor(Math.random()*VEHICLES.length)];
+  const plate='XX'+Math.floor(1000+Math.random()*9000);
+  addVehicle(lane,v,plate,true,false);
+  simTotal++; simFraud++;
+  addLog('⚠ INJECT','Manual anomaly injected: '+plate+' on lane '+(lane+1),'err');
+  updateKPIs();
+}
+
+function resetSim() {
+  clearInterval(simInterval);
+  simRunning=false;
+  document.getElementById('simBtn').textContent='▶ Start Simulation';
+  simTotal=0; simFraud=0; simThroughput=0;
+  throughputData=[]; liveAttnMatrix=[];
+  startTime=null;
+  logLines=[];
+  document.getElementById('logBox').innerHTML='';
+  initLanes(); updateKPIs(); drawLiveAttn(); drawThroughput();
+}
+
+function updateKPIs() {
+  document.getElementById('simTotal').textContent=simTotal;
+  document.getElementById('simFraud').textContent=simFraud;
+  const elapsed=(Date.now()-(startTime||Date.now()))/60000+0.01;
+  document.getElementById('simThroughput').textContent=Math.round(simTotal/elapsed);
+  document.getElementById('simLatency').textContent=(10+Math.random()*8).toFixed(0)+'ms';
+}
+
+function updateLiveAttn(lane,v,anomaly) {
+  // Build attention matrix between recent events (simplified N×N)
+  const N=laneCount;
+  if(!liveAttnMatrix.length) liveAttnMatrix=Array.from({length:N},()=>Array(N).fill(0));
+  for(let i=0;i<N;i++){
+    for(let j=0;j<N;j++){
+      if(i===j){ liveAttnMatrix[i][j]=1; continue; }
+      const base=0.05+Math.random()*0.1;
+      const boost=i===lane||j===lane?0.3:0;
+      const anomalyBoost=anomaly&&(i===lane||j===lane)?0.4:0;
+      liveAttnMatrix[i][j]=Math.min(1,base+boost+anomalyBoost)*0.9+liveAttnMatrix[i][j]*0.1;
+    }
+  }
+}
+
+function drawLiveAttn() {
+  const c=document.getElementById('liveAttnCanvas');
+  const ctx=c.getContext('2d');
+  const W=c.width, H=c.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#0f1117'; ctx.fillRect(0,0,W,H);
+
+  const N=Math.min(laneCount,8);
+  if(!liveAttnMatrix.length || !liveAttnMatrix[0]) { ctx.fillStyle='#64748b';ctx.font='12px DM Sans';ctx.fillText('Start simulation to see attention',80,H/2);return; }
+
+  const pad=50, cw=(W-pad*2)/N, ch=(H-pad*2)/N;
+  for(let r=0;r<N;r++){
+    for(let c2=0;c2<N;c2++){
+      const v=liveAttnMatrix[r]&&liveAttnMatrix[r][c2]?liveAttnMatrix[r][c2]:0;
+      const x=pad+c2*cw, y=pad+r*ch;
+      ctx.fillStyle=`rgba(0,229,255,${v*0.8})`; ctx.fillRect(x,y,cw-2,ch-2);
+      ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.font='9px Space Mono';
+      ctx.fillText(v.toFixed(2),x+2,y+ch*0.65);
+    }
+  }
+  // Labels
+  ctx.fillStyle='#64748b'; ctx.font='9px Space Mono';
+  for(let i=0;i<N;i++){
+    ctx.fillText('L'+(i+1),pad+i*cw+cw/2-6,pad-6);
+    ctx.fillText('L'+(i+1),4,pad+i*ch+ch/2+3);
+  }
+  ctx.fillStyle='#64748b'; ctx.font='10px Space Mono';
+  ctx.fillText('Attention between lanes →',pad,H-6);
+}
+
+function drawThroughput() {
+  const c=document.getElementById('throughputCanvas');
+  const ctx=c.getContext('2d');
+  const W=c.width, H=c.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#0f1117'; ctx.fillRect(0,0,W,H);
+
+  // Grid
+  ctx.strokeStyle='rgba(255,255,255,0.04)'; ctx.lineWidth=1;
+  for(let y=0;y<H;y+=30){ ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke(); }
+
+  if(!throughputData.length){
+    ctx.fillStyle='#64748b';ctx.font='12px DM Sans';ctx.fillText('No data yet — start simulation',60,H/2);
+    return;
+  }
+  const maxV=Math.max(...throughputData.map(d=>d.v),1);
+  const step=W/Math.max(throughputData.length,1);
+
+  // Throughput line
+  ctx.beginPath(); ctx.strokeStyle='#00e5ff'; ctx.lineWidth=2;
+  throughputData.forEach((d,i)=>{ const x=i*step, y=H-20-d.v/maxV*(H-40); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
+  ctx.stroke();
+
+  // Fraud markers
+  throughputData.forEach((d,i)=>{
+    if(d.fraud){ const x=i*step;
+      ctx.fillStyle='#ef4444'; ctx.beginPath(); ctx.arc(x,H-20-d.v/maxV*(H-40),5,0,Math.PI*2); ctx.fill();
+    }
+  });
+
+  // Fill
+  ctx.beginPath(); ctx.strokeStyle='transparent';
+  const grad=ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,'rgba(0,229,255,0.15)'); grad.addColorStop(1,'rgba(0,229,255,0)');
+  ctx.fillStyle=grad;
+  throughputData.forEach((d,i)=>{ const x=i*step,y=H-20-d.v/maxV*(H-40); i===0?ctx.moveTo(x,H-20):null; ctx.lineTo(x,y); });
+  ctx.lineTo(throughputData.length*step,H-20); ctx.closePath(); ctx.fill();
+
+  // Labels
+  ctx.fillStyle='#64748b'; ctx.font='10px Space Mono';
+  ctx.fillText('Vehicle Throughput',6,16);
+  ctx.fillStyle='#ef4444';
+  ctx.fillText('● Anomaly',W-90,16);
+}
+
+function addLog(type, msg, cls) {
+  const el=document.getElementById('logBox');
+  const time=new Date().toLocaleTimeString('en',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const line=document.createElement('div');
+  line.className='log-line '+cls;
+  line.textContent=`[${time}] [${type}] ${msg}`;
+  el.appendChild(line);
+  el.scrollTop=el.scrollHeight;
+  if(el.children.length>100) el.removeChild(el.children[0]);
+}
+
+// ============================================================
+//  TOOLTIP
+// ============================================================
+document.querySelectorAll('[data-tip]').forEach(el=>{
+  el.addEventListener('mouseenter',e=>{
+    const t=document.getElementById('tooltip');
+    t.textContent=el.dataset.tip; t.style.display='block';
+  });
+  el.addEventListener('mousemove',e=>{
+    const t=document.getElementById('tooltip');
+    t.style.left=(e.clientX+12)+'px'; t.style.top=(e.clientY-10)+'px';
+  });
+  el.addEventListener('mouseleave',()=>{ document.getElementById('tooltip').style.display='none'; });
+});
+
+// ============================================================
+//  INIT
+// ============================================================
+window.onload=()=>{
+  showTab('overview');
+  // Animate KPIs
+  animateKPI('kpi1','175B',0,175,1000,'B');
+};
+
+function animateKPI(id,final,from,to,dur,suffix) {
+  const el=document.getElementById(id);
+  if(!el) return;
+  const step=(to-from)/(dur/16);
+  let cur=from;
+  const iv=setInterval(()=>{
+    cur=Math.min(cur+step,to);
+    el.textContent=Math.round(cur)+suffix;
+    if(cur>=to){clearInterval(iv);el.textContent=final;}
+  },16);
+}
+</script>
+</body>
+</html>
